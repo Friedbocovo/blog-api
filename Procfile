@@ -1,2 +1,2 @@
-web: vendor/bin/heroku-php-apache2 -i ext/pdo_mysql.ini public/
+web: php artisan serve --host=0.0.0.0 --port=$PORT
 release: php artisan migrate --force
