@@ -26,7 +26,9 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Set permissions
 RUN chmod -R 775 storage bootstrap/cache
+RUN chmod +x start.sh
 
-EXPOSE 8080
+# Expose both HTTP and WebSocket ports
+EXPOSE 8080 8081
 
-CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
+CMD ["./start.sh"]
