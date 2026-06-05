@@ -19,6 +19,26 @@ use Illuminate\Support\Facades\Event;
 class CommentController extends Controller
 {
     // -------------------------------------------------------------------------
+    // Admin
+    // -------------------------------------------------------------------------
+
+    /**
+     * GET /api/admin/comments
+     *
+     * Return all comments for admin with post and user relations.
+     * Only root-level comments (no parent_id) with their replies nested.
+     */
+    public function adminIndex(): JsonResponse
+    {
+        $comments = Comment::with(['user', 'post', 'replies.user'])
+            ->whereNull('parent_id') // Only root-level comments
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($comments);
+    }
+
+    // -------------------------------------------------------------------------
     // Public
     // -------------------------------------------------------------------------
 

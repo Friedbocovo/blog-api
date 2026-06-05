@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AboutPage;
+use App\Services\CloudinaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -58,6 +59,30 @@ class AboutController extends Controller
         $validated['updated_at'] = now();
 
         $about = AboutPage::updateOrCreate([], $validated);
+
+        return response()->json($about);
+    }
+
+    /**
+     * POST /api/admin/about/photo  [admin only]
+     *
+     * Upload profile photo for About page.
+     *
+     * Validates: Requirements 9.2, 9.3
+     */
+    public function uploadPhoto(Request $request): JsonResponse
+    {
+        $request->validate([
+            'photo' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
+        ]);
+
+        $cloudinary = new CloudinaryService();
+        $url = $cloudinary->upload($request->file('photo'), 'about');
+
+        $about = AboutPage::updateOrCreate([], [
+            'profile_photo' => $url,
+            'updated_at' => now(),
+        ]);
 
         return response()->json($about);
     }

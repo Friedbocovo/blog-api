@@ -103,4 +103,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     // About (admin update)
     Route::put('/about', [AboutController::class, 'update']);
+    Route::post('/about/photo', [AboutController::class, 'uploadPhoto']);
+    
+    // Comments (admin)
+    Route::get('/comments', [CommentController::class, 'adminIndex']);
 });
