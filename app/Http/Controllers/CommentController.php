@@ -76,16 +76,35 @@ class CommentController extends Controller
         // Notify post author if they are not the commenter
         if ($post->user_id !== $request->user()->id) {
             try {
-                $post->user->notify(new \Illuminate\Notifications\DatabaseNotification());
+                // Create database notification
+                $post->user->notifications()->create([
+                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'type' => 'App\\Notifications\\NewComment',
+                    'data' => [
+                        'type' => 'new_comment',
+                        'comment_id' => $comment->id,
+                        'post_id' => $post->id,
+                        'post_title' => $post->title,
+                        'commenter_name' => $request->user()->name,
+                        'commenter_id' => $request->user()->id,
+                        'comment_content' => $comment->content,
+                        'message' => $request->user()->name . ' a commenté votre article "' . $post->title . '"',
+                    ],
+                    'read_at' => null,
+                ]);
             } catch (\Throwable) {
                 // Database notification failure should not block event dispatch
             }
 
             Event::dispatch(new NewNotification($post->user_id, [
-                'type'       => 'new_comment',
+                'type' => 'new_comment',
                 'comment_id' => $comment->id,
-                'post_id'    => $post->id,
-                'from'       => $request->user()->name,
+                'post_id' => $post->id,
+                'post_title' => $post->title,
+                'commenter_name' => $request->user()->name,
+                'commenter_id' => $request->user()->id,
+                'comment_content' => $comment->content,
+                'message' => $request->user()->name . ' a commenté votre article "' . $post->title . '"',
             ]));
         }
 
@@ -98,7 +117,7 @@ class CommentController extends Controller
      * POST /api/comments/{id}/reply
      *
      * Create a reply to an existing comment. Shares the same post and sets
-     * parent_id. Also parses @mentions.
+     * parent_id. Also parses @mentions and sends notifications.
      *
      * Validates: Requirements 5.3, 5.4
      */
@@ -108,7 +127,7 @@ class CommentController extends Controller
             'content' => 'required|string',
         ]);
 
-        $parent = Comment::findOrFail($id);
+        $parent = Comment::with(['user', 'post'])->findOrFail($id);
 
         $comment = Comment::create([
             'post_id'   => $parent->post_id,
@@ -118,6 +137,43 @@ class CommentController extends Controller
         ]);
 
         $this->parseMentions($comment, $request->input('content'));
+
+        // Notify the original commenter if they are not the replier
+        if ($parent->user_id !== $request->user()->id) {
+            try {
+                // Create database notification
+                $parent->user->notifications()->create([
+                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'type' => 'App\\Notifications\\CommentReply',
+                    'data' => [
+                        'type' => 'comment_reply',
+                        'comment_id' => $comment->id,
+                        'parent_comment_id' => $parent->id,
+                        'post_id' => $parent->post_id,
+                        'post_title' => $parent->post->title,
+                        'replier_name' => $request->user()->name,
+                        'replier_id' => $request->user()->id,
+                        'reply_content' => $comment->content,
+                        'message' => $request->user()->name . ' a répondu à votre commentaire',
+                    ],
+                    'read_at' => null,
+                ]);
+            } catch (\Throwable) {
+                // Database notification failure should not block event dispatch
+            }
+
+            Event::dispatch(new NewNotification($parent->user_id, [
+                'type' => 'comment_reply',
+                'comment_id' => $comment->id,
+                'parent_comment_id' => $parent->id,
+                'post_id' => $parent->post_id,
+                'post_title' => $parent->post->title,
+                'replier_name' => $request->user()->name,
+                'replier_id' => $request->user()->id,
+                'reply_content' => $comment->content,
+                'message' => $request->user()->name . ' a répondu à votre commentaire',
+            ]));
+        }
 
         $comment->load('user');
 

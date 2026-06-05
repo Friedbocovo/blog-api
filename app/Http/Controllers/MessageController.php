@@ -52,15 +52,35 @@ class MessageController extends Controller
         // Broadcast NewMessage on private-chat.{receiverId}
         event(new NewMessage($message));
 
-        // Attempt to dispatch NewNotification — failure must not block the response
+        // Create database notification and dispatch WebSocket notification
+        try {
+            // Create database notification
+            $receiver->notifications()->create([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'type' => 'App\\Notifications\\NewMessage',
+                'data' => [
+                    'type' => 'new_message',
+                    'message_id' => $message->id,
+                    'message_content' => $message->content,
+                    'sender_name' => $sender->name,
+                    'sender_id' => $sender->id,
+                    'message' => 'Nouveau message de ' . $sender->name,
+                ],
+                'read_at' => null,
+            ]);
+        } catch (\Throwable) {
+            // Database notification failure should not block WebSocket dispatch
+        }
+
+        // Dispatch WebSocket notification (independent of DB persistence)  
         try {
             event(new NewNotification($receiver->id, [
-                'type'    => 'new_message',
-                'message' => [
-                    'id'        => $message->id,
-                    'content'   => $message->content,
-                    'sender_id' => $sender->id,
-                ],
+                'type' => 'new_message',
+                'message_id' => $message->id,
+                'message_content' => $message->content,
+                'sender_name' => $sender->name,
+                'sender_id' => $sender->id,
+                'message' => 'Nouveau message de ' . $sender->name,
             ]));
         } catch (\Throwable $e) {
             // Intentionally swallowed — WebSocket notification is best-effort
