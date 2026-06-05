@@ -22,6 +22,8 @@ return [
     'allowed_origins' => [
         'http://localhost:5173',  // blog-visitor
         'http://localhost:5174',  // blog-admin
+        'https://bocovo-blog-admin.vercel.app',
+        'https://*.vercel.app',
     ],
 
     'allowed_origins_patterns' => [],
