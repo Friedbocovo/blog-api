@@ -75,6 +75,18 @@ class Post extends Model
     }
 
     /**
+     * Get the full URL for cover_image.
+     * If it's already an absolute URL, return as-is.
+     * Otherwise prefix with the storage URL.
+     */
+    public function getCoverImageAttribute(?string $value): ?string
+    {
+        if (!$value) return null;
+        if (str_starts_with($value, 'http')) return $value;
+        return url('storage/' . $value);
+    }
+
+    /**
      * The author of the post.
      */
     public function user(): BelongsTo
