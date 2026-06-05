@@ -28,10 +28,21 @@ class PostController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $posts = Post::with(['tags', 'user'])
+        $query = Post::with(['tags', 'user'])
             ->withCount(['comments', 'likedByUsers as likes_count', 'favoritedByUsers as favorites_count'])
-            ->orderByDesc('created_at')
-            ->paginate(10);
+            ->orderByDesc('created_at');
+
+        // Filtre par statut
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // Filtre par tag
+        if ($request->filled('tag')) {
+            $query->whereHas('tags', fn($q) => $q->where('slug', $request->input('tag')));
+        }
+
+        $posts = $query->paginate(10);
 
         return response()->json($posts);
     }
