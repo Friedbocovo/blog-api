@@ -6,6 +6,7 @@ use App\Events\PostUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\Tag;
+use App\Services\CloudinaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -70,8 +71,8 @@ class PostController extends Controller
 
         $coverImagePath = null;
         if ($request->hasFile('cover_image')) {
-            $coverImagePath = $request->file('cover_image')
-                ->store('covers', 'public');
+            $cloudinary = new CloudinaryService();
+            $coverImagePath = $cloudinary->upload($request->file('cover_image'), 'covers');
         }
 
         $post = Post::create([
@@ -120,12 +121,15 @@ class PostController extends Controller
 
         // Handle cover image replacement
         if ($request->hasFile('cover_image')) {
-            // Remove old image if it's stored locally
-            if ($post->cover_image && !str_starts_with($post->cover_image, 'http')) {
+            // Remove old image from Cloudinary if it's a Cloudinary URL
+            if ($post->cover_image && str_contains($post->cover_image, 'cloudinary.com')) {
+                $cloudinary = new CloudinaryService();
+                $cloudinary->delete($post->cover_image);
+            } elseif ($post->cover_image && !str_starts_with($post->cover_image, 'http')) {
                 Storage::disk('public')->delete($post->cover_image);
             }
-            $validated['cover_image'] = $request->file('cover_image')
-                ->store('covers', 'public');
+            $cloudinary = new CloudinaryService();
+            $validated['cover_image'] = $cloudinary->upload($request->file('cover_image'), 'covers');
         } else {
             unset($validated['cover_image']);
         }
