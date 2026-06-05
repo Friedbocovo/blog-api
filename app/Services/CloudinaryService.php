@@ -24,8 +24,15 @@ class CloudinaryService
     public function upload(UploadedFile $file, string $folder = 'covers'): string
     {
         $timestamp = time();
-        $params    = "folder={$folder}&timestamp={$timestamp}";
-        $signature = sha1($params . $this->apiSecret);
+
+        // Signature Cloudinary : paramètres triés alphabétiquement + secret
+        $paramsToSign = [
+            'folder'    => $folder,
+            'timestamp' => $timestamp,
+        ];
+        ksort($paramsToSign);
+        $paramString = http_build_query($paramsToSign, '', '&');
+        $signature   = sha1($paramString . $this->apiSecret);
 
         $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/image/upload";
 
