@@ -55,6 +55,9 @@ Route::get('/tags',                    [TagController::class, 'index']);
 // Authenticated routes (auth:sanctum)
 // ------------------------------------------------------------------
 Route::middleware('auth:sanctum')->group(function () {
+    // Post status (likes/favorites for current user)
+    Route::get('/posts/{slug}/status', [PostController::class, 'status']);
+    
     // Likes
     Route::post('/posts/{id}/like',    [LikeController::class, 'store']);
     Route::delete('/posts/{id}/like',  [LikeController::class, 'destroy']);

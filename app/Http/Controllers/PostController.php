@@ -79,7 +79,10 @@ class PostController extends Controller
      */
     public function show(string $slug): JsonResponse
     {
-        $post = Post::where('slug', $slug)->firstOrFail();
+        $post = Post::where('slug', $slug)
+            ->with(['user', 'tags'])
+            ->withCount(['likedByUsers as likes_count', 'favoritedByUsers as favorites_count'])
+            ->firstOrFail();
 
         // Draft posts are not visible to the public
         if ($post->status === 'draft') {
@@ -89,9 +92,38 @@ class PostController extends Controller
         // Increment view counter
         $post->increment('views_count');
 
-        // Reload with all relations needed for a full post view
-        $post->load(['user', 'tags', 'comments.user']);
+        // Reload the post with the updated view count
+        $post = Post::where('slug', $slug)
+            ->with(['user', 'tags'])
+            ->withCount(['likedByUsers as likes_count', 'favoritedByUsers as favorites_count'])
+            ->firstOrFail();
 
         return response()->json($post);
+    }
+
+    /**
+     * GET /api/posts/{slug}/status
+     *
+     * Returns user-specific status for a post (liked, favorited).
+     * Requires authentication.
+     *
+     * Validates: Requirements for user interactions
+     */
+    public function status(Request $request, string $slug): JsonResponse
+    {
+        $post = Post::where('slug', $slug)->firstOrFail();
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $liked = $user->likedPosts()->where('post_id', $post->id)->exists();
+        $favorited = $user->favoritePosts()->where('post_id', $post->id)->exists();
+
+        return response()->json([
+            'liked' => $liked,
+            'favorited' => $favorited
+        ]);
     }
 }
